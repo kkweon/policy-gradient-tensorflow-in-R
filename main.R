@@ -9,7 +9,7 @@ instance_id = env_create(client, env_name)
 
 log_dir = file.path(getwd(), "log")
 env_monitor_start(client, instance_id, log_dir, force = T, resume = F)
-episode_count <- 1
+episode_count <- 10
 max_steps <- 200
 reward <- 0
 done <- FALSE
@@ -19,9 +19,8 @@ for (i in 1:episode_count) {
     
     for (i in 1:max_steps) {
         action <- env_action_space_sample(client, instance_id)
-        results <- env_step(client, instance_id, action, render = FALSE)
+        results <- env_step(client, instance_id, action, render = T)
         # List(observation, reward, done, info)
-        memoery        
         if (results[["done"]]) break
     }
 }
