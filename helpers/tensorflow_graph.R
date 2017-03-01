@@ -1,21 +1,5 @@
 library(tensorflow)
-
-ProcessState = function(observation.List) {
-    # Convert a single state list to a matrix
-    #
-    # Args:
-    #   - observation.List: List[[i]] = Value
-    #
-    # Returns: 
-    #   - (1, 4) shape matrix
-    # 
-    # Example:
-    #   > state = list(val1, val2, val3, val4)
-    #   > ProcessState(state)
-    #        [,1] [,2] [,3] [,4]
-    #   [1,] val1 val2 val3 val4   
-    t(as.matrix(unlist(observation.List)))
-}
+library(testthat)
 
 ToList = function(List, key1, key2, val) {
     # Add value to List and return a new list
@@ -49,6 +33,8 @@ PolicyGradientBuilder = function(lr=0.01, scope="policy") {
     #   - scope (character): name of the graph
     # Returns:
     #   - out (list): output of the graph
+    #       $input$(...) where ... can be states, actions, advantages
+    #       $op$(...) where ... can be prob, loss, train_op       
     out = list()
     
     with(tf$variable_scope(scope), {
@@ -58,14 +44,14 @@ PolicyGradientBuilder = function(lr=0.01, scope="policy") {
             advantages = tf$placeholder(tf$float32, shape(NULL, 1L), name='advantages')
             
             # Add to output    
-            out = toList(out, 'input', 'states', states)
-            out = toList(out, 'input', 'actions', actions)
-            out = toList(out, 'input', 'advantages', advantages)
+            out = ToList(out, 'input', 'states', states)
+            out = ToList(out, 'input', 'actions', actions)
+            out = ToList(out, 'input', 'advantages', advantages)
         })
         
-        with(tf$variable_scope("op"), {
+        with(tf$variable_scope("op") %as% scope, {
             # W * states + b -> (N, 2)
-            net = tf$contrib$layers$linear(states, num_outputs=2L, scope="fc")
+            net = tf$contrib$layers$linear(states, num_outputs=2L, scope=scope)
             # Each action probability -> (N, 2)
             prob = tf$nn$softmax(net) 
             # Keep real actions -> (N, 2)
@@ -89,9 +75,17 @@ PolicyGradientBuilder = function(lr=0.01, scope="policy") {
 }
 
 ValueGradientBuilder = function(hidden_dim=10L, lr=0.01, scope="value") {
+    # Build Value Gradient Graph
+    # Args:
+    #   - hidden_dim (int): hidden dimension
+    #   - lr (float): learning rate
+    #   - scope (character): scope name
+    # Returns:
+    #   - out (list): output of the graph
+    #       $input$(...) where ... can be states, true_values
+    #       $op$(...) where ... can be values, loss, train_op       
     with(tf$variable_scope(scope), {
         out = list()
-        
         with(tf$name_scope("input"), {
             states = tf$placeholder(tf$float32, shape(NULL, 4L), name='states')
             true.values = tf$placeholder(tf$float32, shape(NULL, 1L), name='true_values')
@@ -121,4 +115,5 @@ ValueGradientBuilder = function(hidden_dim=10L, lr=0.01, scope="value") {
         return(out)
     })
 }
+
 
