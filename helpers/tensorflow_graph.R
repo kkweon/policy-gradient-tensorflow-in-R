@@ -26,8 +26,8 @@ ToList = function(List, key1, key2, val) {
 
 
 tf$reset_default_graph()
-PolicyGradientBuilder = function(lr=0.01, scope="policy") {
-    # Build a Poligy Gradient Graph
+PolicyGraphBuilder = function(lr=0.01, scope="policy") {
+    # Build a policy graph
     # Args:
     #   - lr (float): learning rate
     #   - scope (character): name of the graph
@@ -74,8 +74,8 @@ PolicyGradientBuilder = function(lr=0.01, scope="policy") {
     return(out)
 }
 
-ValueGradientBuilder = function(hidden_dim=10L, lr=0.01, scope="value") {
-    # Build Value Gradient Graph
+ValueGraphBuilder = function(hidden_dim=10L, lr=0.01, scope="value") {
+    # Build a value graph
     # Args:
     #   - hidden_dim (int): hidden dimension
     #   - lr (float): learning rate
