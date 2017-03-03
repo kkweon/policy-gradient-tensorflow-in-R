@@ -26,7 +26,7 @@ ToList = function(List, key1, key2, val) {
 
 
 tf$reset_default_graph()
-PolicyGraphBuilder = function(lr=0.01, scope="policy") {
+PolicyGraphBuilder = function(lr=0.01, hidden_dim=10L, scope="policy") {
     # Build a policy graph
     # Args:
     #   - lr (float): learning rate
@@ -51,7 +51,11 @@ PolicyGraphBuilder = function(lr=0.01, scope="policy") {
         
         with(tf$variable_scope("op") %as% scope, {
             # W * states + b -> (N, 2)
-            net = tf$contrib$layers$linear(states, num_outputs=2L, scope=scope)
+            net = tf$contrib$layers$linear(states, activation_fn=tf$nn$relu, num_outputs=hidden_dim, scope='fc1')
+            net = tf$contrib$layers$linear(net, activation_fn=tf$nn$relu, num_outputs=hidden_dim, scope='fc2')
+            net = tf$contrib$layers$linear(net, activation_fn=NULL, num_outputs=2L, scope='final')
+            max_v = tf$reduce_max(net, axis = 1L, keep_dims = T)
+            net = net - max_v
             # Each action probability -> (N, 2)
             prob = tf$nn$softmax(net) 
             # Keep real actions -> (N, 2)
@@ -60,11 +64,14 @@ PolicyGraphBuilder = function(lr=0.01, scope="policy") {
             net = tf$reduce_sum(net, axis = 1L) 
             
             # Log Probability 
-            net = tf$log(net) 
-            net = tf$multiply(net, advantages)
-            net = tf$reduce_sum(net)
-            loss = tf$negative(net)
-            train_op = tf$train$AdamOptimizer(lr)$minimize(loss)
+            net = tf$log(net) * advantages
+            loss = -tf$reduce_mean(net)
+            
+            entropy = prob * tf$log(prob)
+            entropy = -tf$reduce_mean(entropy)
+            loss = loss + entropy * 0.001
+            
+            train_op = tf$train$RMSPropOptimizer(lr)$minimize(loss)
             
             out = ToList(out, 'op', 'prob', prob) 
             out = ToList(out, 'op', 'loss', loss)
@@ -99,14 +106,18 @@ ValueGraphBuilder = function(hidden_dim=10L, lr=0.01, scope="value") {
                                                     hidden_dim, # output dim
                                                     activation_fn=tf$nn$relu,
                                                     scope='fc1')
-            values = tf$contrib$layers$fully_connected(net, # input dim
-                                                    1L,  # output dim
-                                                    activation_fn=NULL,
+            net = tf$contrib$layers$fully_connected(net,     # input dim
+                                                    hidden_dim, # output dim
+                                                    activation_fn=tf$nn$relu,
                                                     scope='fc2')
-            loss = tf$subtract(values, true.values)
-            loss = tf$square(loss)
-            loss = tf$reduce_sum(loss)
-            train_op = tf$train$AdamOptimizer(lr)$minimize(loss)
+            values = tf$contrib$layers$fully_connected(net, # input dim
+                                                       1L,  # output dim
+                                                       activation_fn=NULL,
+                                                       scope='final')
+            loss = tf$square(values - true.values)
+            loss = tf$reduce_mean(loss)
+            
+            train_op = tf$train$RMSPropOptimizer(lr)$minimize(loss)
             
             out = ToList(out, 'op', 'values', values)
             out = ToList(out, 'op', 'loss', loss)

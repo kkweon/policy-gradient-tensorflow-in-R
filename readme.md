@@ -1,8 +1,16 @@
 # Policy Gradient with Tensorflow, R, OpenAI(CartPole)
 This is a policy gradient implementation using  
 * R
-* OpenAi Gym
+* OpenAi Gym (CartPole-v0)
 * Tensorflow
+
+# Screenshot
+
+## During Training
+![before](doc/checkpoint.gif)
+## After Training
+![img](doc/checkpoint_v3.gif)
+
 
 # File Description
 * train.R 
@@ -18,3 +26,4 @@ This is a policy gradient implementation using
   * game result of training step
 * tests/
   * unittests files are located here
+

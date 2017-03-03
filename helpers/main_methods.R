@@ -30,15 +30,13 @@ DiscountReward = function(reward.matrix, discount.rate) {
 
 ChooseAction = function(sess, policy.prob, input.placeholder, observation) {
     action.prob = sess$run(policy.prob, feed_dict=dict(input.placeholder=observation))
-    p = runif(1)
-    if (p <= action.prob[[1]])
-        action = 0
-    else
-        action = 1
+    action = sample(0:1, size=1, prob=action.prob)
+    stopifnot(action == 0 || action == 1)
     action
 }
 
-RunEpisode = function(client, instance.id, policy.grad, sess, timestep=500, render=F) {
+
+RunEpisode = function(client, instance.id, policy.graph, sess, timestep=500, render=F, bad.reward=-10) {
     # Run single episode (game)
     # Args:
     #   - client (GymClient): from create_GymClient
@@ -58,8 +56,8 @@ RunEpisode = function(client, instance.id, policy.grad, sess, timestep=500, rend
     obs = ProcessState(obs)
     for(i in 1:timestep) {
         action = ChooseAction(sess, 
-                              policy.grad$op$prob, 
-                              policy.grad$input$states,
+                              policy.graph$op$prob, 
+                              policy.graph$input$states,
                               obs)
         
         action_vector = numeric(2L)
@@ -70,8 +68,11 @@ RunEpisode = function(client, instance.id, policy.grad, sess, timestep=500, rend
         result$obs = rbind(result$obs, obs, deparse.level = 0)
         result$rewards = rbind(result$rewards, data$reward, deparse.level = 0)
         result$actions = rbind(result$actions, action_vector, deparse.level = 0)
-        
+       
         if (data$done) {
+            if (sum(result$rewards) < 199) {
+                result$rewards[length(result$rewards)] = bad.reward
+            }
             break
         }
         
@@ -100,4 +101,14 @@ ProcessMemory = function(memory.list, discount.rate, value.grad, sess) {
     result$advantages = reward.discounted - values.pred
     result$values.true = reward.discounted
     result
+}
+
+
+EnvCloseAll = function() {
+    remote_base = "http://127.0.0.1:5000"
+    client = create_GymClient(remote_base)
+    env.ids = names(env_list_all(client))
+    for(id in env.ids) {
+        env_close(client, env.ids)
+    }
 }
